@@ -93,7 +93,6 @@ static void RunBot(int argc, char *argv[], sc2::Agent *Agent, sc2::Race race) {
     sc2::Coordinator coordinator;
 
     // Add the custom bot, it will control the players.
-    int num_agents;
     if (Options.Training) {
         if (!coordinator.LoadSettings(argc, argv)) {
             std::cout << "Unable to find or parse settings." << std::endl;
