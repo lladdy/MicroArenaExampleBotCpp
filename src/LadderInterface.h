@@ -54,22 +54,18 @@ struct ConnectionOptions {
     int32_t GamePort;
     int32_t StartPort;
     std::string ServerAddress;
-    bool ComputerOpponent;
-    sc2::Difficulty ComputerDifficulty;
-    sc2::Race ComputerRace;
+    bool Training;
     std::string OpponentId;
 };
 
 static void ParseArguments(int argc, char *argv[], ConnectionOptions &connect_options) {
     sc2::ArgParser arg_parser(argv[0]);
     arg_parser.AddOptions({
-                                  {"-g", "--GamePort",           "Port of client to connect to", false},
-                                  {"-o", "--StartPort",          "Starting server port",         false},
-                                  {"-l", "--LadderServer",       "Ladder server address",        false},
-                                  {"-c", "--ComputerOpponent",   "If we set up a computer oppenent"},
-                                  {"-a", "--ComputerRace",       "Race of computer oppent"},
-                                  {"-d", "--ComputerDifficulty", "Difficulty of computer oppenent"},
-                                  {"-x", "--OpponentId",         "PlayerId of opponent"}
+                                  {"-g", "--GamePort",     "Port of client to connect to", false},
+                                  {"-o", "--StartPort",    "Starting server port",         false},
+                                  {"-l", "--LadderServer", "Ladder server address",        false},
+                                  {"-t", "--Training",     "Run in training mode on the training map. Other argument are superfluous when training mode is flagged."},
+                                  {"-x", "--OpponentId",   "PlayerId of opponent"}
                           });
     arg_parser.Parse(argc, argv);
     std::string GamePortStr;
@@ -81,20 +77,11 @@ static void ParseArguments(int argc, char *argv[], ConnectionOptions &connect_op
         connect_options.StartPort = atoi(StartPortStr.c_str());
     }
     arg_parser.Get("LadderServer", connect_options.ServerAddress);
-    std::string CompOpp;
-    if (arg_parser.Get("ComputerOpponent", CompOpp)) {
-        connect_options.ComputerOpponent = true;
-        std::string CompRace;
-        if (arg_parser.Get("ComputerRace", CompRace)) {
-            connect_options.ComputerRace = GetRaceFromString(CompRace);
-        }
-        std::string CompDiff;
-        if (arg_parser.Get("ComputerDifficulty", CompDiff)) {
-            connect_options.ComputerDifficulty = GetDifficultyFromString(CompDiff);
-        }
-
+    std::string training;
+    if (arg_parser.Get("Training", training)) {
+        connect_options.Training = true;
     } else {
-        connect_options.ComputerOpponent = false;
+        connect_options.Training = false;
     }
     arg_parser.Get("OpponentId", connect_options.OpponentId);
 }
@@ -107,29 +94,37 @@ static void RunBot(int argc, char *argv[], sc2::Agent *Agent, sc2::Race race) {
 
     // Add the custom bot, it will control the players.
     int num_agents;
-    if (Options.ComputerOpponent) {
-        num_agents = 1;
+    if (Options.Training) {
+        if (!coordinator.LoadSettings(argc, argv)) {
+            std::cout << "Unable to find or parse settings." << std::endl;
+            return;
+        }
+        coordinator.SetStepSize(1);
+        coordinator.SetRealtime(true);
+        coordinator.SetMultithreaded(true);
         coordinator.SetParticipants({
                                             CreateParticipant(race, Agent),
-                                            CreateComputer(Options.ComputerRace, Options.ComputerDifficulty)
+                                            CreateComputer(sc2::Race::Terran, sc2::Difficulty::VeryHard)
                                     });
+        coordinator.LaunchStarcraft();
+        coordinator.StartGame("AI-Arena_I_training.SC2Map");
     } else {
-        num_agents = 2;
         coordinator.SetParticipants({
                                             CreateParticipant(race, Agent),
                                     });
+
+        // Start the game.
+
+        // Step forward the game simulation.
+        std::cout << "Connecting to port " << Options.GamePort << std::endl;
+        coordinator.Connect(Options.GamePort);
+        coordinator.SetupPorts(2, Options.StartPort, false);
+        // Step forward the game simulation.
+        coordinator.JoinGame();
+        coordinator.SetTimeoutMS(10000);
+        std::cout << " Successfully joined game" << std::endl;
     }
 
-    // Start the game.
-
-    // Step forward the game simulation.
-    std::cout << "Connecting to port " << Options.GamePort << std::endl;
-    coordinator.Connect(Options.GamePort);
-    coordinator.SetupPorts(num_agents, Options.StartPort, false);
-    // Step forward the game simulation.
-    coordinator.JoinGame();
-    coordinator.SetTimeoutMS(10000);
-    std::cout << " Successfully joined game" << std::endl;
-    while (coordinator.Update()) {
+    while (coordinator.Update()) { // run the game
     }
 }
