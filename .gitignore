@@ -1,0 +1,26 @@
+##
+## Visual Studio .gitignore reference: https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
+##
+
+# User-specific files
+*.suo
+*.user
+
+# Build results
+Debug/
+Release/
+x64/
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+
+# Directories for building into
+build/
+build_*/
+
+# CLion
+.idea/
+cmake-build-*/
+
+# VScode
+.vscode/
